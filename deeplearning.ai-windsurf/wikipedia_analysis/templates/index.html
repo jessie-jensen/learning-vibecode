@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wikipedia Category Word Cloud</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #wordcloud { width: 900px; height: 600px; border: 1px solid #ddd; margin-top: 20px; }
+        #form { margin-bottom: 20px; }
+        #error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Wikipedia Category Word Cloud</h1>
+    <form id="form">
+        <label for="category">Wikipedia Category:</label>
+        <input type="text" id="category" value="Large language models" size="40">
+        <button type="submit">Generate Word Cloud</button>
+    </form>
+    <div id="error"></div>
+    <div id="wordcloud"></div>
+    <script>
+    function drawWordCloud(words) {
+        d3.select("#wordcloud").selectAll("*").remove();
+        var layout = d3.layout.cloud()
+            .size([900, 600])
+            .words(words.map(function(d) {
+                return {text: d[0], size: 10 + Math.sqrt(d[1]) * 12};
+            }))
+            .padding(3)
+            .rotate(() => ~~(Math.random() * 2) * 90)
+            .font("Impact")
+            .fontSize(d => d.size)
+            .on("end", function(words) {
+                d3.select("#wordcloud")
+                  .append("svg")
+                  .attr("width", 900)
+                  .attr("height", 600)
+                  .append("g")
+                  .attr("transform", "translate(450,300)")
+                  .selectAll("text")
+                  .data(words)
+                  .enter().append("text")
+                  .style("font-size", d => d.size + "px")
+                  .style("font-family", "Impact")
+                  .style("fill", () => d3.schemeCategory10[Math.floor(Math.random()*10)])
+                  .attr("text-anchor", "middle")
+                  .attr("transform", d => `translate(${d.x},${d.y})rotate(${d.rotate})`)
+                  .text(d => d.text);
+            });
+        layout.start();
+    }
+
+    document.getElementById('form').onsubmit = function(e) {
+        e.preventDefault();
+        let cat = document.getElementById('category').value;
+        document.getElementById('error').textContent = '';
+        fetch(`/wordfreq?category=${encodeURIComponent(cat)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('error').textContent = data.error;
+                    drawWordCloud([]);
+                } else {
+                    let words = Object.entries(data).sort((a,b) => b[1]-a[1]).slice(0,150);
+                    drawWordCloud(words);
+                }
+            })
+            .catch(err => {
+                document.getElementById('error').textContent = 'Error loading word frequencies.';
+                drawWordCloud([]);
+            });
+    };
+
+    // Auto-load default
+    document.getElementById('form').onsubmit(new Event('submit'));
+    </script>
+</body>
+</html>

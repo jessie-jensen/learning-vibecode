@@ -84,12 +84,8 @@ def main():
         sys.exit(1)
     category = sys.argv[1]
     cache = load_cache(category)
-    if cache:
-        print(f"Loaded category '{category}' from cache.")
-        titles = cache['titles']
-        texts = cache['texts']
-    else:
-        print(f"Fetching pages in category: {category}")
+    if cache is None:
+        print(f"Cache not found. Fetching pages in category: {category}")
         titles = get_category_members(category)
         print(f"Found {len(titles)} pages. Fetching content and computing frequencies...")
         texts = []
@@ -98,12 +94,17 @@ def main():
             text = get_page_text(title)
             texts.append(text)
         save_cache(category, titles, texts)
+        cache = {'titles': titles, 'texts': texts}
+    else:
+        print(f"Loaded category '{category}' from cache.")
+    titles = cache['titles']
+    texts = cache['texts']
     freq = Counter()
     for text in texts:
         words = tokenize(text)
         freq.update(words)
     print("\nWord frequencies (non-common words):")
-    for word, count in freq.most_common():
+    for word, count in freq.most_common(100):
         if count > 100:
             print(f"{word}\t{count}")
 
